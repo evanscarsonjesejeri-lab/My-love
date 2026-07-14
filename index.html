@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>For Shannicy 💛</title>
+
+  <meta name="description" content="A little website made with love.">
+  <meta property="og:title" content="For Shannicy 💛">
+  <meta property="og:description" content="A little website made with love.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="photo1.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="For Shannicy 💛">
+  <meta name="theme-color" content="#2b0d16">
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>❤️</text></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Great+Vibes&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+</head>
+<body>
+
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    const OPENED_AT = Date.now();
+    const PAGE_COUNT = 9;
+    const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+    function buzz(ms) {
+      if (navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) {} }
+    }
+
+    function sparkBurst(x, y) {
+      for (let i = 0; i < 7; i++) {
+        const s = document.createElement("span");
+        s.className = "spark";
+        s.textContent = Math.random() < 0.5 ? "♥" : "✦";
+        s.style.left = x + "px";
+        s.style.top = y + "px";
+        s.style.fontSize = 8 + Math.random() * 12 + "px";
+        const ang = Math.random() * Math.PI * 2;
+        const dist = 40 + Math.random() * 70;
+        s.style.setProperty("--sx", (Math.cos(ang) * dist).toFixed(0) + "px");
+        s.style.setProperty("--sy", (Math.sin(ang) * dist - 30).toFixed(0) + "px");
+        s.addEventListener("animationend", () => s.remove());
+        document.body.appendChild(s);
+      }
+    }
+
+    /* ── word-by-word reveal ── */
+    function Reveal({ text, start = 0.35, className = "" }) {
+      const words = text.split(" ");
+      return (
+        <p className={className + " reveal"}>
+          {words.map((w, i) => (
+            <React.Fragment key={i}>
+              <span className="w" style={{ "--d": (start + i * 0.09).toFixed(2) + "s" }}>{w}</span>
+              {i < words.length - 1 ? " " : null}
+            </React.Fragment>
+          ))}
+        </p>
+      );
+    }
+
+    /* ── preloader ── */
+    function Loader() {
+      const [done, setDone] = useState(false);
+      useEffect(() => {
+        const t0 = setTimeout(() => setDone(true), 4000);
+        const onLoad = () => setTimeout(() => setDone(true), Math.max(0, 900 - (Date.now() - OPENED_AT)));
+        if (document.readyState === "complete") onLoad();
+        else window.addEventListener("load", onLoad);
+        return () => { clearTimeout(t0); window.removeEventListener("load", onLoad); };
+      }, []);
+      return (
+        <div id="loader" className={done ? "done" : ""} aria-hidden="true">
+          <div className="loader-heart">♥</div>
+          <div className="loader-text">for Shannicy</div>
+        </div>
+      );
+    }
+
+    /* ── gold dust canvas ── */
+    function Dust() {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (REDUCED) return;
+        const canvas = ref.current;
+        const ctx = canvas.getContext("2d");
+        let motes = [], raf;
+
+        const make = () => ({
+          x: Math.random() * canvas.width,
+          y: canvas.height * (0.2 + Math.random() * 0.9),
+          r: (0.6 + Math.random() * 1.6) * DPR,
+          vy: (0.06 + Math.random() * 0.16) * DPR,
+          drift: Math.random() * Math.PI * 2,
+          driftSpeed: 0.002 + Math.random() * 0.004,
+          tw: Math.random() * Math.PI * 2,
+          twSpeed: 0.01 + Math.random() * 0.02,
+        });
+
+        const init = () => {
+          canvas.width = window.innerWidth * DPR;
+          canvas.height = window.innerHeight * DPR;
+          motes = Array.from({ length: Math.min(70, Math.floor(window.innerWidth / 8)) }, make);
+        };
+
+        const draw = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          for (let i = 0; i < motes.length; i++) {
+            const m = motes[i];
+            m.y -= m.vy; m.drift += m.driftSpeed; m.tw += m.twSpeed;
+            m.x += Math.sin(m.drift) * 0.25 * DPR;
+            if (m.y < -10) { motes[i] = make(); motes[i].y = canvas.height + 10; continue; }
+            const a = 0.12 + 0.22 * (0.5 + 0.5 * Math.sin(m.tw));
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(233,200,138," + a.toFixed(3) + ")";
+            ctx.fill();
+          }
+          raf = requestAnimationFrame(draw);
+        };
+
+        init(); draw();
+        window.addEventListener("resize", init);
+        return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", init); };
+      }, []);
+      return <canvas id="dust" ref={ref} aria-hidden="true" />;
+    }
+
+    /* ── 3D beating heart (Three.js) ── */
+    function ThreeHeart({ active }) {
+      const mountRef = useRef(null);
+      const stateRef = useRef(null);
+
+      useEffect(() => {
+        if (REDUCED || !window.THREE) return;
+        const mount = mountRef.current;
+        const W = mount.clientWidth || 180;
+        const H = mount.clientHeight || 180;
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setPixelRatio(DPR);
+        renderer.setSize(W, H);
+        mount.appendChild(renderer.domElement);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 100);
+        camera.position.z = 16;
+
+        scene.add(new THREE.AmbientLight(0xffc9d4, 0.55));
+        const key = new THREE.PointLight(0xffe3b3, 1.4);
+        key.position.set(6, 8, 10);
+        scene.add(key);
+        const rim = new THREE.PointLight(0xff7d9c, 0.9);
+        rim.position.set(-8, -4, 6);
+        scene.add(rim);
+
+        const shape = new THREE.Shape();
+        shape.moveTo(2.5, 2.5);
+        shape.bezierCurveTo(2.5, 2.5, 2.0, 0, 0, 0);
+        shape.bezierCurveTo(-3.0, 0, -3.0, 3.5, -3.0, 3.5);
+        shape.bezierCurveTo(-3.0, 5.5, -1.0, 7.7, 2.5, 9.5);
+        shape.bezierCurveTo(6.0, 7.7, 8.0, 5.5, 8.0, 3.5);
+        shape.bezierCurveTo(8.0, 3.5, 8.0, 0, 5.0, 0);
+        shape.bezierCurveTo(3.5, 0, 2.5, 2.5, 2.5, 2.5);
+
+        const geo = new THREE.ExtrudeGeometry(shape, {
+          depth: 1.6, bevelEnabled: true, bevelSegments: 5,
+          bevelSize: 0.55, bevelThickness: 0.55, curveSegments: 24,
+        });
+        geo.center();
+        const mat = new THREE.MeshPhysicalMaterial({
+          color: 0xc22745, metalness: 0.3, roughness: 0.24,
+          clearcoat: 1, clearcoatRoughness: 0.18, emissive: 0x420a16,
+        });
+        const heart = new THREE.Mesh(geo, mat);
+        heart.rotation.z = Math.PI;
+        const group = new THREE.Group();
+        group.add(heart);
+        group.scale.setScalar(0.62);
+        scene.add(group);
+
+        const N = 90;
+        const pos = new Float32Array(N * 3);
+        for (let i = 0; i < N; i++) {
+          const r = 5.5 + Math.random() * 2.5;
+          const th = Math.random() * Math.PI * 2;
+          const ph = Math.acos(2 * Math.random() - 1);
+          pos[i * 3] = r * Math.sin(ph) * Math.cos(th);
+          pos[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th);
+          pos[i * 3 + 2] = r * Math.cos(ph);
+        }
+        const pgeo = new THREE.BufferGeometry();
+        pgeo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+        const pmat = new THREE.PointsMaterial({
+          color: 0xe9c88a, size: 0.14, transparent: true, opacity: 0.9,
+          depthWrite: false, blending: THREE.AdditiveBlending,
+        });
+        const stars = new THREE.Points(pgeo, pmat);
+        scene.add(stars);
+
+        stateRef.current = { renderer, scene, camera, group, stars };
+        return () => {
+          renderer.dispose(); geo.dispose(); mat.dispose(); pgeo.dispose(); pmat.dispose();
+          if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
+          stateRef.current = null;
+        };
+      }, []);
+
+      useEffect(() => {
+        if (!active || REDUCED) return;
+        let raf;
+        const t0 = performance.now();
+        const loop = () => {
+          const s = stateRef.current;
+          if (!s) return;
+          const t = (performance.now() - t0) / 1000;
+          // lub-dub heartbeat
+          const beat = 1
+            + 0.07 * Math.pow(Math.max(0, Math.sin(t * 2.4)), 3)
+            + 0.035 * Math.pow(Math.max(0, Math.sin(t * 2.4 + 0.4)), 3);
+          s.group.scale.setScalar(0.62 * beat);
+          s.group.rotation.y = Math.sin(t * 0.5) * 0.45;
+          s.group.position.y = Math.sin(t * 0.9) * 0.35;
+          s.stars.rotation.y = t * 0.12;
+          s.stars.rotation.x = Math.sin(t * 0.2) * 0.2;
+          s.renderer.render(s.scene, s.camera);
+          raf = requestAnimationFrame(loop);
+        };
+        loop();
+        return () => cancelAnimationFrame(raf);
+      }, [active]);
+
+      return <div className="heart3d" ref={mountRef} aria-hidden="true"></div>;
+    }
+
+    /* ── falling rose petals ── */
+    function Petals() {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (REDUCED) return;
+        const canvas = ref.current;
+        const ctx = canvas.getContext("2d");
+        let petals = [], raf;
+
+        const make = (fromTop) => ({
+          x: Math.random() * canvas.width,
+          y: fromTop ? -40 * DPR : Math.random() * canvas.height,
+          s: (7 + Math.random() * 9) * DPR,
+          vy: (0.35 + Math.random() * 0.55) * DPR,
+          vx: (Math.random() - 0.5) * 0.3 * DPR,
+          rot: Math.random() * Math.PI * 2,
+          vr: (Math.random() - 0.5) * 0.02,
+          sway: Math.random() * Math.PI * 2,
+          swaySpeed: 0.008 + Math.random() * 0.012,
+          flut: Math.random() * Math.PI * 2,
+          flutSpeed: 0.02 + Math.random() * 0.03,
+          hue: 335 + Math.random() * 20,
+          light: 58 + Math.random() * 14,
+        });
+
+        const size = () => {
+          canvas.width = window.innerWidth * DPR;
+          canvas.height = window.innerHeight * DPR;
+          petals = Array.from(
+            { length: Math.max(10, Math.min(18, Math.floor(window.innerWidth / 55))) },
+            () => make(false)
+          );
+        };
+
+        const draw = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          for (const p of petals) {
+            p.sway += p.swaySpeed; p.flut += p.flutSpeed; p.rot += p.vr;
+            p.x += p.vx + Math.sin(p.sway) * 0.4 * DPR;
+            p.y += p.vy;
+            if (p.y > canvas.height + 40 * DPR) Object.assign(p, make(true));
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot + Math.sin(p.sway) * 0.4);
+            ctx.scale(1, 0.6 + 0.35 * Math.sin(p.flut));
+            const g = ctx.createLinearGradient(0, -p.s, 0, p.s);
+            g.addColorStop(0, "hsla(" + p.hue + ", 72%, " + (p.light + 12) + "%, 0.8)");
+            g.addColorStop(1, "hsla(" + p.hue + ", 66%, " + (p.light - 8) + "%, 0.8)");
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(0, -p.s);
+            ctx.bezierCurveTo(p.s * 0.95, -p.s * 0.35, p.s * 0.7, p.s * 0.6, 0, p.s);
+            ctx.bezierCurveTo(-p.s * 0.7, p.s * 0.6, -p.s * 0.95, -p.s * 0.35, 0, -p.s);
+            ctx.fill();
+            ctx.restore();
+          }
+          raf = requestAnimationFrame(draw);
+        };
+
+        size();
+        draw();
+        window.addEventListener("resize", size);
+        return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", size); };
+      }, []);
+      return <canvas className="petals" ref={ref} aria-hidden="true" />;
+    }
+
+    /* ── ambient music ── */
+    function MusicToggle() {
+      const [playing, setPlaying] = useState(false);
+      const ctxRef = useRef(null);
+      const padRef = useRef(null);
+      const pluckRef = useRef(null);
+
+      const build = () => {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const pad = ctx.createGain();
+        pad.gain.value = 0;
+        const filter = ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.value = 900;
+        pad.connect(filter);
+        filter.connect(ctx.destination);
+        [110, 164.81, 220, 277.18].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          osc.type = i < 2 ? "sine" : "triangle";
+          osc.frequency.value = freq;
+          osc.detune.value = (Math.random() - 0.5) * 6;
+          const g = ctx.createGain();
+          g.gain.value = i < 2 ? 0.3 : 0.14;
+          const lfo = ctx.createOscillator();
+          lfo.frequency.value = 0.05 + i * 0.017;
+          const lg = ctx.createGain();
+          lg.gain.value = g.gain.value * 0.4;
+          lfo.connect(lg); lg.connect(g.gain);
+          osc.connect(g); g.connect(pad);
+          osc.start(); lfo.start();
+        });
+        ctxRef.current = ctx;
+        padRef.current = pad;
+      };
+
+      const pluck = () => {
+        const ctx = ctxRef.current;
+        if (!ctx) return;
+        const notes = [440, 554.37, 659.25, 739.99, 493.88];
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = notes[Math.floor(Math.random() * notes.length)];
+        const g = ctx.createGain();
+        const now = ctx.currentTime;
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(0.045, now + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(now); osc.stop(now + 3);
+      };
+
+      const toggle = (e) => {
+        e.stopPropagation();
+        if (!ctxRef.current) build();
+        const ctx = ctxRef.current;
+        if (ctx.state === "suspended") ctx.resume();
+        const on = !playing;
+        setPlaying(on);
+        const now = ctx.currentTime;
+        const pad = padRef.current;
+        pad.gain.cancelScheduledValues(now);
+        pad.gain.setValueAtTime(pad.gain.value, now);
+        pad.gain.linearRampToValueAtTime(on ? 0.05 : 0, now + 1.8);
+        if (on && !pluckRef.current) {
+          pluckRef.current = setInterval(() => { if (Math.random() < 0.65) pluck(); }, 3400);
+        } else if (!on && pluckRef.current) {
+          clearInterval(pluckRef.current);
+          pluckRef.current = null;
+        }
+      };
+
+      return (
+        <button id="music" type="button" className={playing ? "playing" : ""}
+                onClick={toggle} aria-label="Toggle music" title="music">
+          <span className="music-icon">♫</span>
+        </button>
+      );
+    }
+
+    /* ── page 4: the deck ── */
+    const CARDS = [
+      { no: "♥  forever  ♥", text: "…and a thousand more I'm still counting.", foot: "tap to shuffle them back", last: true },
+      { no: "reason no. 05", text: "The way home stopped being a place, and started being you." },
+      { no: "reason no. 04", text: "Your heart. It's the kindest one I know." },
+      { no: "reason no. 03", text: "You listen like what I say actually matters." },
+      { no: "reason no. 02", text: "How safe the world feels when you're in it." },
+      { no: "reason no. 01", text: "The way you laugh with your whole face." },
+    ];
+
+    function Deck() {
+      const [flung, setFlung] = useState(0);       // how many cards have flown (from the top)
+      const [styles, setStyles] = useState({});    // domIndex -> fling vars
+      const resettingRef = useRef(false);
+      const topIndex = CARDS.length - 1 - flung;   // dom index of current top card
+
+      const onTap = (e) => {
+        if (resettingRef.current) return;
+        buzz(6);
+        if (topIndex === 0) {
+          resettingRef.current = true;
+          let f = flung;
+          const iv = setInterval(() => {
+            f -= 1;
+            setFlung(f);
+            if (f <= 0) { clearInterval(iv); resettingRef.current = false; }
+          }, 110);
+          return;
+        }
+        const dir = flung % 2 === 0 ? 1 : -1;
+        setStyles((s) => ({
+          ...s,
+          [topIndex]: {
+            "--fx": dir * (55 + Math.random() * 20) + "vw",
+            "--fy": -(24 + Math.random() * 14) + "vh",
+            "--fr": dir * (18 + Math.random() * 14) + "deg",
+          },
+        }));
+        setFlung(flung + 1);
+        sparkBurst(e.clientX, e.clientY);
+      };
+
+      return (
+        <React.Fragment>
+          <div className="deck" onClick={onTap}>
+            {CARDS.map((c, i) => {
+              const isFlung = (CARDS.length - 1 - i) < flung;
+              const cls = "card" + (c.last ? " card-last" : "") +
+                          (isFlung ? " flung" : "") +
+                          (i === topIndex && !isFlung ? " top" : "");
+              return (
+                <div key={i} className={cls} style={styles[i] || {}}>
+                  <span className="card-no">{c.no}</span>
+                  <span className="card-text">{c.text}</span>
+                  {c.foot ? <span className="card-foot">{c.foot}</span> : null}
+                </div>
+              );
+            })}
+          </div>
+          <p className="deck-count">
+            {topIndex === 0 ? "♥ and always ♥" : "♥ " + (flung + 1) + " of 5"}
+          </p>
+        </React.Fragment>
+      );
+    }
+
+    /* ── page 5: press & hold the heart ── */
+    function HoldHeart() {
+      const [done, setDone] = useState(false);
+      const fillRef = useRef(null);
+      const heartRef = useRef(null);
+      const holdingRef = useRef(false);
+      const pRef = useRef(0);
+      const runningRef = useRef(false);
+      const doneRef = useRef(false);
+
+      const tick = () => {
+        if (doneRef.current) { runningRef.current = false; return; }
+        pRef.current += holdingRef.current ? 0.016 : -0.03;
+        pRef.current = Math.max(0, Math.min(1, pRef.current));
+        if (fillRef.current) {
+          fillRef.current.style.transform = "translateY(" + (-24 * pRef.current).toFixed(2) + "px)";
+        }
+        if (pRef.current >= 1) {
+          doneRef.current = true;
+          runningRef.current = false;
+          setDone(true);
+          buzz([12, 60, 24]);
+          return;
+        }
+        if (holdingRef.current || pRef.current > 0) requestAnimationFrame(tick);
+        else runningRef.current = false;
+      };
+
+      const start = (e) => {
+        if (doneRef.current) return;
+        e.preventDefault();
+        holdingRef.current = true;
+        heartRef.current.classList.add("holding");
+        if (!runningRef.current) { runningRef.current = true; requestAnimationFrame(tick); }
+      };
+
+      const end = () => {
+        holdingRef.current = false;
+        if (heartRef.current) heartRef.current.classList.remove("holding");
+      };
+
+      return (
+        <React.Fragment>
+          <div className="hold-wrap reveal">
+            <button ref={heartRef} type="button" aria-label="Press and hold"
+                    className={"hold-heart" + (done ? " full" : "")}
+                    onPointerDown={start} onPointerUp={end}
+                    onPointerCancel={end} onPointerLeave={end}>
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <clipPath id="heartClip">
+                    <path d="M12 21s-7.5-4.9-10-9.3C.4 8.9 2 5.5 5.2 5.1 7.2 4.8 9 5.9 12 8.6c3-2.7 4.8-3.8 6.8-3.5 3.2.4 4.8 3.8 3.2 6.6C19.5 16.1 12 21 12 21z"/>
+                  </clipPath>
+                </defs>
+                <path className="heart-outline" d="M12 21s-7.5-4.9-10-9.3C.4 8.9 2 5.5 5.2 5.1 7.2 4.8 9 5.9 12 8.6c3-2.7 4.8-3.8 6.8-3.5 3.2.4 4.8 3.8 3.2 6.6C19.5 16.1 12 21 12 21z"/>
+                <rect ref={fillRef} className="heart-fill" x="0" y="24" width="24" height="24" clipPath="url(#heartClip)"/>
+              </svg>
+            </button>
+            <p className={"whisper hold-hint" + (done ? " gone" : "")}>press &amp; hold the heart</p>
+          </div>
+          <div id="holdReward" className={"locked" + (done ? " unlocked" : "")}>
+            <div className="polaroid">
+              <div className="photo-window">
+                <img src="photo1.jpg" alt="Shannicy smiling" />
+              </div>
+              <p className="polaroid-caption script-name">the only proof I keep</p>
+            </div>
+            <p className="line line-sub">I just need you.</p>
+          </div>
+        </React.Fragment>
+      );
+    }
+
+    /* ── page 7: the envelope & letter ── */
+    function Letter() {
+      const [open, setOpen] = useState(false);
+      const [opened, setOpened] = useState(false);
+
+      const openIt = () => {
+        if (open) return;
+        setOpen(true);
+        buzz(10);
+        setTimeout(() => setOpened(true), 1100);
+      };
+
+      return (
+        <React.Fragment>
+          <div className={"envelope-stage" + (opened ? " opened" : "")}>
+            <button className={"envelope" + (open ? " open" : "")} type="button"
+                    onClick={openIt} aria-label="Open the letter">
+              <span className="env-back"></span>
+              <span className="env-letter">♥</span>
+              <span className="env-front"></span>
+              <span className="env-flap"></span>
+              <span className="env-seal">S</span>
+            </button>
+            <p className="whisper env-hint">there's a letter for you — tap to open it</p>
+          </div>
+          <div className={"letter locked" + (opened ? " unlocked" : "")}>
+            <p className="letter-salutation script-name">Shannicy,</p>
+            <p>Some things feel too big for a text, and too true to stay unsaid — so I built you this.</p>
+            <p>From your smile in that garden to the way you say my name — I notice everything, and I keep all of it.</p>
+            <p>Whatever gets said in a moment doesn't change what's true every day. And every day, the truth is simple: you are my favorite person, my softest place to land, my best decision.</p>
+            <p className="letter-love script-name">I love you.</p>
+          </div>
+        </React.Fragment>
+      );
+    }
+
+    /* ── page 8: the counter ── */
+    function Counter({ active }) {
+      const [secs, setSecs] = useState(0);
+      useEffect(() => {
+        if (!active) return;
+        const iv = setInterval(() => setSecs(Math.floor((Date.now() - OPENED_AT) / 1000)), 500);
+        return () => clearInterval(iv);
+      }, [active]);
+      return (
+        <div className="counter reveal">
+          <p className="counter-num">{secs.toLocaleString()}</p>
+          <p className="counter-label">seconds you've been here —<br/>and I'd stay for every one that's left.</p>
+        </div>
+      );
+    }
+
+    /* ── page 9: the finale hearts ── */
+    function FinaleCanvas({ active }) {
+      const ref = useRef(null);
+      const heartsRef = useRef([]);
+
+      useEffect(() => {
+        if (!active || REDUCED) return;
+        const canvas = ref.current;
+        const ctx = canvas.getContext("2d");
+        let raf;
+
+        const size = () => {
+          canvas.width = window.innerWidth * DPR;
+          canvas.height = window.innerHeight * DPR;
+        };
+        size();
+
+        const heartPath = (x, y, s) => {
+          ctx.beginPath();
+          ctx.moveTo(x, y + s * 0.32);
+          ctx.bezierCurveTo(x, y, x - s * 0.5, y - s * 0.28, x - s * 0.5, y + s * 0.08);
+          ctx.bezierCurveTo(x - s * 0.5, y + s * 0.42, x - s * 0.12, y + s * 0.66, x, y + s * 0.92);
+          ctx.bezierCurveTo(x + s * 0.12, y + s * 0.66, x + s * 0.5, y + s * 0.42, x + s * 0.5, y + s * 0.08);
+          ctx.bezierCurveTo(x + s * 0.5, y - s * 0.28, x, y, x, y + s * 0.32);
+          ctx.closePath();
+        };
+
+        const draw = () => {
+          const hearts = heartsRef.current;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          for (let i = hearts.length - 1; i >= 0; i--) {
+            const h = hearts[i];
+            h.life++; h.sway += h.swaySpeed;
+            h.x += h.vx + Math.sin(h.sway) * 0.5 * DPR;
+            h.y += h.vy;
+            if (h.vx) h.vx *= 0.985;
+            const t = h.life / h.maxLife;
+            let a = t < 0.1 ? t / 0.1 : t > 0.75 ? Math.max(0, (1 - t) / 0.25) : 1;
+            a *= 0.5;
+            if (t >= 1 || h.y < -60 * DPR) { hearts.splice(i, 1); continue; }
+            ctx.save();
+            ctx.globalAlpha = a;
+            ctx.shadowBlur = 14 * DPR;
+            ctx.shadowColor = h.gold ? "rgba(233,200,138,0.9)" : "rgba(240,201,192,0.9)";
+            ctx.fillStyle = h.gold ? "#e9c88a" : "#f0c9c0";
+            heartPath(h.x, h.y, h.s);
+            ctx.fill();
+            ctx.restore();
+          }
+          raf = requestAnimationFrame(draw);
+        };
+        draw();
+
+        const spawn = () => {
+          if (heartsRef.current.length < 40) {
+            heartsRef.current.push(makeHeart(undefined, undefined, false, canvas));
+          }
+        };
+        spawn();
+        const iv = setInterval(spawn, 1200);
+
+        window.addEventListener("resize", size);
+        return () => {
+          cancelAnimationFrame(raf);
+          clearInterval(iv);
+          window.removeEventListener("resize", size);
+          heartsRef.current = [];
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        };
+      }, [active]);
+
+      // exposed for tap-bursts via a custom event
+      useEffect(() => {
+        const onKiss = (e) => {
+          if (!active) return;
+          const canvas = ref.current;
+          for (let i = 0; i < 10; i++) {
+            heartsRef.current.push(makeHeart(e.detail.x * DPR, e.detail.y * DPR, true, canvas));
+          }
+        };
+        window.addEventListener("kiss", onKiss);
+        return () => window.removeEventListener("kiss", onKiss);
+      }, [active]);
+
+      return <canvas className="finale-canvas" ref={ref} aria-hidden="true" />;
+    }
+
+    function makeHeart(x, y, burst, canvas) {
+      return {
+        x: x !== undefined ? x : Math.random() * canvas.width,
+        y: y !== undefined ? y : canvas.height + 30 * DPR,
+        s: (10 + Math.random() * 18) * DPR,
+        vx: burst ? (Math.random() - 0.5) * 3 * DPR : 0,
+        vy: burst ? -(1.2 + Math.random() * 2.2) * DPR : -(0.45 + Math.random() * 0.7) * DPR,
+        sway: Math.random() * Math.PI * 2,
+        swaySpeed: 0.008 + Math.random() * 0.014,
+        life: 0,
+        maxLife: burst ? 220 : 480 + Math.random() * 200,
+        gold: Math.random() < 0.45,
+      };
+    }
+
+    /* ── progress hearts ── */
+    function Progress({ page }) {
+      return (
+        <nav className="progress" aria-label="Progress">
+          <p className="progress-num">{page + 1} / {PAGE_COUNT}</p>
+          <div className="progress-dots">
+            {Array.from({ length: PAGE_COUNT }, (_, i) => (
+              <span key={i} aria-hidden="true"
+                    className={"dot" + (i < page ? " filled" : "") + (i === page ? " current" : "")}>♥</span>
+            ))}
+          </div>
+        </nav>
+      );
+    }
+
+    /* ── glowing next button ── */
+    function NextBtn({ onNext, onPhoto }) {
+      return (
+        <button className={"next-btn" + (onPhoto ? " on-photo-btn" : "")} type="button"
+                onClick={(e) => { e.stopPropagation(); onNext(); }}>
+          Next ↓
+        </button>
+      );
+    }
+
+    /* ── the app ── */
+    function App() {
+      const [nav, setNav] = useState({ page: 0, prev: -1, dir: "up" });
+      const navRef = useRef(nav);
+      navRef.current = nav;
+      const lockRef = useRef(false);
+
+      const goTo = useCallback((i) => {
+        const cur = navRef.current.page;
+        if (lockRef.current || i < 0 || i >= PAGE_COUNT || i === cur) return;
+        lockRef.current = true;
+        setNav({ page: i, prev: cur, dir: i > cur ? "up" : "down" });
+        buzz(8);
+        setTimeout(() => { lockRef.current = false; }, 1050);
+      }, []);
+
+      const next = useCallback(() => goTo(navRef.current.page + 1), [goTo]);
+      const prev = useCallback(() => goTo(navRef.current.page - 1), [goTo]);
+
+      /* global navigation: keys, swipe, wheel */
+      useEffect(() => {
+        const onKey = (e) => {
+          const tag = document.activeElement && document.activeElement.tagName;
+          if (["ArrowDown", "ArrowRight", " ", "Enter"].includes(e.key)) {
+            if (tag === "BUTTON") return;
+            e.preventDefault(); next();
+          } else if (["ArrowUp", "ArrowLeft"].includes(e.key)) {
+            e.preventDefault(); prev();
+          }
+        };
+        let touchY = null;
+        const onTouchStart = (e) => { touchY = e.touches[0].clientY; };
+        const onTouchEnd = (e) => {
+          if (touchY === null) return;
+          const d = touchY - e.changedTouches[0].clientY;
+          touchY = null;
+          if (Math.abs(d) < 60) return;
+          d > 0 ? next() : prev();
+        };
+        let wheelLock = false;
+        const onWheel = (e) => {
+          if (wheelLock || Math.abs(e.deltaY) < 12) return;
+          wheelLock = true;
+          e.deltaY > 0 ? next() : prev();
+          setTimeout(() => { wheelLock = false; }, 1200);
+        };
+        document.addEventListener("keydown", onKey);
+        document.addEventListener("touchstart", onTouchStart, { passive: true });
+        document.addEventListener("touchend", onTouchEnd, { passive: true });
+        document.addEventListener("wheel", onWheel, { passive: true });
+        return () => {
+          document.removeEventListener("keydown", onKey);
+          document.removeEventListener("touchstart", onTouchStart);
+          document.removeEventListener("touchend", onTouchEnd);
+          document.removeEventListener("wheel", onWheel);
+        };
+      }, [next, prev]);
+
+      /* photo parallax: mouse + gyroscope */
+      useEffect(() => {
+        if (REDUCED) return;
+        let tx = 0, ty = 0, cx = 0, cy = 0, raf, els = null;
+        const onMove = (e) => {
+          tx = (e.clientX / window.innerWidth - 0.5) * 2;
+          ty = (e.clientY / window.innerHeight - 0.5) * 2;
+        };
+        const onTilt = (e) => {
+          if (e.gamma === null || e.beta === null) return;
+          tx = Math.max(-1, Math.min(1, e.gamma / 28));
+          ty = Math.max(-1, Math.min(1, (e.beta - 42) / 28));
+        };
+        const loop = () => {
+          if (!els || !els.length) els = document.querySelectorAll("[data-parallax]");
+          cx += (tx - cx) * 0.045;
+          cy += (ty - cy) * 0.045;
+          const t = "perspective(1000px) rotateY(" + (cx * 3.2).toFixed(2) + "deg) rotateX(" + (-cy * 2.4).toFixed(2) + "deg) scale(1.09)";
+          for (let i = 0; i < els.length; i++) els[i].style.transform = t;
+          raf = requestAnimationFrame(loop);
+        };
+        document.addEventListener("pointermove", onMove, { passive: true });
+        window.addEventListener("deviceorientation", onTilt, true);
+        loop();
+        return () => {
+          cancelAnimationFrame(raf);
+          document.removeEventListener("pointermove", onMove);
+          window.removeEventListener("deviceorientation", onTilt);
+        };
+      }, []);
+
+      const cls = (i, extra) => {
+        let c = "page " + (extra || "");
+        if (i === nav.page) c += " active";
+        else if (i === nav.prev) c += nav.dir === "up" ? " leaving-up" : " leaving-down";
+        return c;
+      };
+
+      const kiss = (e) => {
+        if (nav.page !== 8) return;
+        window.dispatchEvent(new CustomEvent("kiss", { detail: { x: e.clientX, y: e.clientY } }));
+        buzz(12);
+      };
+
+      return (
+        <React.Fragment>
+          <Loader />
+          <Dust />
+          <Petals />
+          <div className="grain" aria-hidden="true"></div>
+          <div className="vignette" aria-hidden="true"></div>
+          <MusicToggle />
+
+          <main id="pages">
+
+            {/* 1 — landing */}
+            <section className={cls(0, "page-1")} onClick={next} aria-label="Page 1 of 9">
+              <div className="content">
+                <Reveal className="eyebrow" text="a small universe, made for one person" />
+                <ThreeHeart active={nav.page === 0} />
+                <h1 className="script-name shimmer">Shannicy</h1>
+                <p className="hint">tap anywhere to begin</p>
+              </div>
+            </section>
+
+            {/* 2 — before anything */}
+            <section className={cls(1, "page-2")} aria-label="Page 2 of 9">
+              <div className="texture-bg texture-photo1"></div>
+              <div className="content">
+                <Reveal className="eyebrow" text="chapter one" />
+                <Reveal className="line" text="Before anything else —" start={0.7} />
+                <Reveal className="line line-sub" text="I need you to feel this, not just read it." start={1.2} />
+                <Reveal className="whisper" text="Take your time. Every page is yours." start={2.2} />
+              </div>
+              <NextBtn onNext={next} />
+            </section>
+
+            {/* 3 — photo reveal 1 */}
+            <section className={cls(2, "page-3 photo-page")} aria-label="Page 3 of 9">
+              <div className="photo-frame" data-parallax>
+                <div className="photo-bg kenburns">
+                  <img src="photo1.jpg" alt="Shannicy smiling in the garden" />
+                </div>
+              </div>
+              <div className="photo-shade"></div>
+              <div className="content content-bottom">
+                <Reveal className="eyebrow on-photo-eyebrow" text="the first thing I noticed" />
+                <Reveal className="line on-photo" text="This is the smile I fell for." start={0.8} />
+                <Reveal className="whisper on-photo-whisper" text="And I fall for it again, every single time." start={1.6} />
+              </div>
+              <NextBtn onNext={next} onPhoto />
+            </section>
+
+            {/* 4 — reasons */}
+            <section className={cls(3, "page-4")} aria-label="Page 4 of 9">
+              <div className="texture-bg texture-photo2"></div>
+              <div className="content">
+                <Reveal className="line" text="You make ordinary days feel chosen." />
+                <Reveal className="whisper" text="tap the cards — a few of the reasons why" start={1.1} />
+                <Deck />
+              </div>
+              <NextBtn onNext={next} />
+            </section>
+
+            {/* 5 — trust */}
+            <section className={cls(4, "page-5")} aria-label="Page 5 of 9">
+              <div className="texture-bg texture-photo1"></div>
+              <div className="content">
+                <Reveal className="line" text="I don't need proof to trust you." />
+                <HoldHeart />
+              </div>
+              <NextBtn onNext={next} />
+            </section>
+
+            {/* 6 — photo reveal 2 */}
+            <section className={cls(5, "page-6 photo-page")} aria-label="Page 6 of 9">
+              <div className="photo-frame" data-parallax>
+                <div className="photo-bg duotone slowzoom">
+                  <img src="photo2.jpg" alt="Shannicy standing in the garden" />
+                </div>
+              </div>
+              <div className="duotone-tint"></div>
+              <div className="photo-shade"></div>
+              <div className="content content-bottom">
+                <Reveal className="eyebrow on-photo-eyebrow" text="the truest thing I know" />
+                <Reveal className="line on-photo" text="And this — this is home." start={0.8} />
+                <Reveal className="whisper on-photo-whisper" text="Not the garden. Not the light. You." start={1.5} />
+              </div>
+              <NextBtn onNext={next} onPhoto />
+            </section>
+
+            {/* 7 — the letter */}
+            <section className={cls(6, "page-7")} aria-label="Page 7 of 9">
+              <div className="texture-bg texture-photo1"></div>
+              <div className="content">
+                <Letter />
+              </div>
+              <NextBtn onNext={next} />
+            </section>
+
+            {/* 8 — I choose you */}
+            <section className={cls(7, "page-8")} aria-label="Page 8 of 9">
+              <div className="texture-bg texture-photo2"></div>
+              <div className="content">
+                <div className="ring-photo">
+                  <div className="photo-window round">
+                    <img src="photo1.jpg" alt="Shannicy" />
+                  </div>
+                </div>
+                <Reveal className="line" text="I choose you. Today, and every day after." />
+                <Counter active={nav.page === 7} />
+              </div>
+              <NextBtn onNext={next} />
+            </section>
+
+            {/* 9 — finale */}
+            <section className={cls(8, "page-9")} onClick={kiss} aria-label="Page 9 of 9">
+              <FinaleCanvas active={nav.page === 8} />
+              <div className="content">
+                <div className="finale-portrait">
+                  <div className="photo-window round">
+                    <img src="photo3.jpg" alt="Carson" />
+                  </div>
+                </div>
+                <Reveal className="finale-always script-name" text="Always yours," />
+                <Reveal className="finale-name script-name" text="Carson" start={1.0} />
+                <Reveal className="whisper finale-whisper" text="tap anywhere — every tap is a kiss" start={1.8} />
+                <p className="dev-note">&lt;/&gt; &nbsp;written in code, meant forever — every line compiled with love</p>
+              </div>
+              <button className="replay" type="button" aria-label="Replay from the beginning"
+                      onClick={(e) => { e.stopPropagation(); goTo(0); }}>
+                ↺ replay
+              </button>
+            </section>
+
+          </main>
+
+          <Progress page={nav.page} />
+        </React.Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
