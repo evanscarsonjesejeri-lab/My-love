@@ -316,74 +316,74 @@
       return <canvas className="petals" ref={ref} aria-hidden="true" />;
     }
 
-    /* ── ambient music ── */
+    /* ── background music (song.mp3) ── */
     function MusicToggle() {
       const [playing, setPlaying] = useState(false);
-      const ctxRef = useRef(null);
-      const padRef = useRef(null);
-      const pluckRef = useRef(null);
+      const audioRef = useRef(null);
+      const mutedRef = useRef(false);   // she pressed pause herself
+      const fadeRef = useRef(null);
 
-      const build = () => {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const pad = ctx.createGain();
-        pad.gain.value = 0;
-        const filter = ctx.createBiquadFilter();
-        filter.type = "lowpass";
-        filter.frequency.value = 900;
-        pad.connect(filter);
-        filter.connect(ctx.destination);
-        [110, 164.81, 220, 277.18].forEach((freq, i) => {
-          const osc = ctx.createOscillator();
-          osc.type = i < 2 ? "sine" : "triangle";
-          osc.frequency.value = freq;
-          osc.detune.value = (Math.random() - 0.5) * 6;
-          const g = ctx.createGain();
-          g.gain.value = i < 2 ? 0.3 : 0.14;
-          const lfo = ctx.createOscillator();
-          lfo.frequency.value = 0.05 + i * 0.017;
-          const lg = ctx.createGain();
-          lg.gain.value = g.gain.value * 0.4;
-          lfo.connect(lg); lg.connect(g.gain);
-          osc.connect(g); g.connect(pad);
-          osc.start(); lfo.start();
+      const fadeTo = (target, ms) => {
+        const audio = audioRef.current;
+        if (!audio) return;
+        clearInterval(fadeRef.current);
+        const stepTime = 60;
+        const step = (target - audio.volume) / (ms / stepTime);
+        fadeRef.current = setInterval(() => {
+          let v = audio.volume + step;
+          if ((step >= 0 && v >= target) || (step < 0 && v <= target)) {
+            v = target;
+            clearInterval(fadeRef.current);
+            if (target === 0) audio.pause();
+          }
+          audio.volume = Math.max(0, Math.min(1, v));
+        }, stepTime);
+      };
+
+      const start = () => {
+        const audio = audioRef.current;
+        if (!audio) return;
+        audio.volume = 0;
+        audio.play().then(() => {
+          setPlaying(true);
+          fadeTo(0.7, 2400);
+        }).catch(() => {});
+      };
+
+      useEffect(() => {
+        const audio = new Audio("song.mp3");
+        audio.loop = true;
+        audio.preload = "auto";
+        audio.volume = 0;
+        audioRef.current = audio;
+
+        // try to autoplay right away (some browsers allow it)
+        audio.play().then(() => {
+          setPlaying(true);
+          fadeTo(0.7, 2400);
+        }).catch(() => {
+          // blocked — begin on her very first touch instead
+          const kick = () => {
+            window.removeEventListener("pointerdown", kick);
+            window.removeEventListener("keydown", kick);
+            if (!mutedRef.current && audio.paused) start();
+          };
+          window.addEventListener("pointerdown", kick);
+          window.addEventListener("keydown", kick);
         });
-        ctxRef.current = ctx;
-        padRef.current = pad;
-      };
 
-      const pluck = () => {
-        const ctx = ctxRef.current;
-        if (!ctx) return;
-        const notes = [440, 554.37, 659.25, 739.99, 493.88];
-        const osc = ctx.createOscillator();
-        osc.type = "sine";
-        osc.frequency.value = notes[Math.floor(Math.random() * notes.length)];
-        const g = ctx.createGain();
-        const now = ctx.currentTime;
-        g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(0.045, now + 0.04);
-        g.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
-        osc.connect(g); g.connect(ctx.destination);
-        osc.start(now); osc.stop(now + 3);
-      };
+        return () => { clearInterval(fadeRef.current); audio.pause(); };
+      }, []);
 
       const toggle = (e) => {
         e.stopPropagation();
-        if (!ctxRef.current) build();
-        const ctx = ctxRef.current;
-        if (ctx.state === "suspended") ctx.resume();
-        const on = !playing;
-        setPlaying(on);
-        const now = ctx.currentTime;
-        const pad = padRef.current;
-        pad.gain.cancelScheduledValues(now);
-        pad.gain.setValueAtTime(pad.gain.value, now);
-        pad.gain.linearRampToValueAtTime(on ? 0.05 : 0, now + 1.8);
-        if (on && !pluckRef.current) {
-          pluckRef.current = setInterval(() => { if (Math.random() < 0.65) pluck(); }, 3400);
-        } else if (!on && pluckRef.current) {
-          clearInterval(pluckRef.current);
-          pluckRef.current = null;
+        if (playing) {
+          mutedRef.current = true;
+          setPlaying(false);
+          fadeTo(0, 900);
+        } else {
+          mutedRef.current = false;
+          start();
         }
       };
 
