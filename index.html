@@ -362,13 +362,18 @@
           setPlaying(true);
           fadeTo(0.7, 2400);
         }).catch(() => {
-          // blocked — begin on her very first touch instead
+          // blocked — begin on her very first touch instead.
+          // NOTE: on touch screens only touchend/click count as a
+          // playback-unlocking gesture (pointerdown does not), so we
+          // listen to all of them and let the first one win.
           const kick = () => {
-            window.removeEventListener("pointerdown", kick);
+            window.removeEventListener("touchend", kick);
+            window.removeEventListener("click", kick);
             window.removeEventListener("keydown", kick);
             if (!mutedRef.current && audio.paused) start();
           };
-          window.addEventListener("pointerdown", kick);
+          window.addEventListener("touchend", kick);
+          window.addEventListener("click", kick);
           window.addEventListener("keydown", kick);
         });
 
